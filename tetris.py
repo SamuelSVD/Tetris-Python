@@ -11,7 +11,7 @@ import time
 from pygame.locals import *
 from random import randrange
 
-images = ['Images\\red.JPG','Images\\orange.JPG','Images\\yellow.JPG','Images\\green.JPG','Images\\light_blue.JPG','Images\\blue.JPG','Images\\purple.JPG','Images\\MainMenu.JPG','Images\\Game.JPG','Images\\GamePaused.JPG','Images\\GameOver.JPG','Images\\Controls.JPG','Images\\HighScores.JPG','Images\\NewHighScore.JPG','Images\\clear.JPG']
+images = ['Images/red.JPG','Images/orange.JPG','Images/yellow.JPG','Images/green.JPG','Images/light_blue.JPG','Images/blue.JPG','Images/purple.JPG','Images/MainMenu.JPG','Images/Game.JPG','Images/GamePaused.JPG','Images/GameOver.JPG','Images/Controls.JPG','Images/HighScores.JPG','Images/NewHighScore.JPG','Images/clear.JPG']
 
 #Block type
 RED = 0
@@ -22,6 +22,7 @@ LIGHT_BLUE = 4
 BLUE = 5
 PURPLE = 6
 CLEAR = 14
+
 #Game States
 MAIN_MENU = 7
 GAME = 8
@@ -125,24 +126,29 @@ def rotate(shape):
 	#for block in shape: block[0],block[1] = block[1],-block[0]
     #CW
 	for block in shape: block[0],block[1] = -block[1],block[0]
-#Complete
+
 def canRotate(shape, grid):
+        #print '----------------------'
         canRotate_ = True
         for block in shape:
-                block[0],block[1]=block[1],-block[0]
+            #CCW    
+            #block[0],block[1]=block[1],-block[0]
+            #CW
+            block[0],block[1]=-block[1],block[0]
         for block in shape:
-                if (block[0] + X_[0] < 0 or block[0] + X_[0] >= GRID_X or block[1] + Y_[0] >= GRID_Y):
-                        canRotate_ = False
-                        break
-                for gBlock in grid:
-                        if block[0]+X_[0] == gBlock[0] and block[1]+Y_[0] == gBlock[1]:
-                                canRotate_ = False
-                                break
+            #print block[0]+ X_[0],'<', 0,block[0] + X_[0] < 0, block[0] + X_[0] ,'>=', GRID_X, block[0] + X_[0] >= GRID_X, block[1] + Y_[0] >= GRID_Y
+            if (block[0] + X_[0] < 0 or block[0] + X_[0] >= GRID_X or block[1] + Y_[0] >= GRID_Y):
+                    canRotate_ = False
+                    break
+            for gBlock in grid:
+                    if block[0]+X_[0] == gBlock[0] and block[1]+Y_[0] == gBlock[1]:
+                            canRotate_ = False
+                            break
         
         #Necessary to fix bug where block rotates twice.
         for block in shape:
-                block[0],block[1]=-block[1],block[0]
-
+                block[0],block[1]=block[1],-block[0]
+        
         return canRotate_
 
 
@@ -346,6 +352,18 @@ def main():
     highScores = readHighScores()
     name = ''
     keysPressed = [False, False, False, False, False, False]
+#   Invisible Tetris Game Variables
+    isInvisible = False
+    
+#   shape is visible, grid is visible for some time every time there is a new shape. time decreases for every row
+    TYPE1 = 0
+    maxVisible = 5.0
+    minTimeVisible = 0.5
+#   shape visible, grid is visible for 5 seconds, and there is a time delay, increasing per row.
+    TYPE2 = 1
+    maxTimeInvisible = 30
+    minTimeInvisible = 3
+#   -----------Start Game-----------
     while running:
         tgs.screen.fill((100,0,0))
 
@@ -358,8 +376,17 @@ def main():
                     return
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     mousePos = pygame.mouse.get_pos()
-                    if mousePos[0] > 0 and mousePos[0] <= 32 and mousePos[1] > 0 and mousePos[1] <= 32:
-                        print "HEY YOU! YEAH YOU!"
+                    if mousePos[0] > 0 and mousePos[0] <= 32 and mousePos[1] > 0 and mousePos[1] <= 3:
+                        gameState = GAME
+                        currentShapes = [list(shapes[randrange(0,len(shapes))]),list(shapes[randrange(0,len(shapes))])]
+                        game_grid = []
+                        score = 0
+                        numRows = 0
+                        X_[0] = 5
+                        Y_[0] = -2
+                        name = ''
+                        gameover = False
+                        isInvisible = True
 # 'Play' button
                     elif mousePos[0] > 32 and mousePos[0] <= 32+32*8 and mousePos[1] > 32*11 and mousePos[1] <= 20*32: 
                         gameState = GAME
@@ -371,7 +398,8 @@ def main():
                         Y_[0] = -2
                         name = ''
                         gameover = False
-                        
+                        isInvisible = False
+
 # 'Controls' button
                     elif mousePos[0] > 320 and mousePos[0] <= 17*32 and mousePos[1] > 32*11 and mousePos[1] <= 32*15: 
                         gameState = CONTROLS
@@ -404,24 +432,30 @@ def main():
                     elif mousePos[0] > 223 and mousePos[0] <= 341 and mousePos[1] > 445 and mousePos[1] <= 477 and isPaused: 
                         gameState = MAIN_MENU
                         isPaused = False
-
             # Get keys pressed
             keys = pygame.key.get_pressed()
             #limit movement left, right and rotation to KEY_DELAY (seconds)
             if(keyDelay - time.time() < 0) and not gameover:
-            #if not gameover:
 # P - Pause
                 if keys[K_p] == True and not keysPressed[P]:
                     isPaused = not isPaused
                     #keyDelay = time.time() + KEY_DELAY
                     keysPressed[P] = True
+##                if keys[K_c] == True:
+##                    for i in range(4):
+##                        print 'X:',X_[0],'Y:',Y_[0],
+##                        print X_[0]+currentShapes[0][i][0],Y_[0]+currentShapes[0][i][1]
+##                        keyDelay = time.time() + KEY_DELAY
+                
                 if not isPaused:
 # UP
                     if keys[K_UP] == True and not keysPressed[UP]:
-                        canRotateL = canRotate(currentShapes[0], game_grid)
-                        if canRotateL:
+                        canRotateCW = canRotate(currentShapes[0], game_grid)
+                        #print canRotateCW
+                        if canRotateCW:
                             rotate(currentShapes[0])
                             keyDelay = time.time() + KEY_DELAY
+                        #print canRotate(currentShapes[0], game_grid)
                         keysPressed[UP] = True
 # DOWN
                     elif keys[K_DOWN] == True and not keysPressed[DOWN]:
@@ -451,6 +485,7 @@ def main():
                         currentShapes = nextShape(currentShapes)
                         #keyDelay = time.time() + KEY_DELAY
                         nextFall = time.time() + DROP_DELAY;
+                        
                         keysPressed[SPACE] = True
                     if keys[K_UP] == False:
                         keysPressed[UP] = False
@@ -465,7 +500,7 @@ def main():
                 if keys[K_p] == False:
                     keysPressed[P] = False
                         
-
+            #print 'Block 3'
             if not isPaused and not gameover:
 # Apply 'gravity'
                 if (nextFall - time.time() < 0):
