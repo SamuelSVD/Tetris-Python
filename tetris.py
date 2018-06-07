@@ -11,7 +11,7 @@ import time
 from pygame.locals import *
 from random import randrange
 
-images = ['Images\\red.JPG','Images\\orange.JPG','Images\\yellow.JPG','Images\\green.JPG','Images\\light_blue.JPG','Images\\blue.JPG','Images\\purple.JPG','Images\\MainMenu.JPG','Images\\Game.JPG']
+images = ['Images\\red.JPG','Images\\orange.JPG','Images\\yellow.JPG','Images\\green.JPG','Images\\light_blue.JPG','Images\\blue.JPG','Images\\purple.JPG','Images\\MainMenu.JPG','Images\\Game.JPG','Images\\GamePaused.JPG','Images\\GameOver.JPG','Images\\Controls.JPG','Images\\HighScores.JPG']
 
 #Block type
 RED = 0
@@ -24,12 +24,15 @@ PURPLE = 6
 #Game States
 MAIN_MENU = 7
 GAME = 8
-CONTROLS = 9
-HIGH_SCORES = 10
+CONTROLS = 11
+HIGH_SCORES = 12
+
+#Others
+GAME_PAUSED = 9
+GAME_OVER = 10
 
 # IN GAME VARIABLES
-# Colors
-DROP_DELAY = 0.3
+DROP_DELAY = 0.6
 KEY_DELAY = 0.1
 DOWN = 0
 LEFT = 1
@@ -52,6 +55,7 @@ shapes = [[[-1,0,0],[0,0,0],[0,-1,0],[1,0,0]], #T
 
 GRID_X = 10
 GRID_Y = 20
+
 
 #Complete
 def loadImages():
@@ -100,7 +104,6 @@ def drawGrid(screen, images, grid):
 #Complete
 def rotate(shape):
 	for block in shape: block[0],block[1] = block[1],-block[0]
-	print shape
 
 #Complete
 def canRotate(shape, grid):
@@ -134,9 +137,12 @@ def nextShape(Shapes):
 
 
 def updateGrid(grid, shape,score):
+    isgameover = False
     for block in shape:
             coord = list(block)
             coord[0],coord[1] = coord[0]+X_[0],coord[1]+Y_[0]
+            if coord[1] < 0:
+                isgameover = True
             grid.append(coord)
     blockCount = [0]*GRID_Y #Creates list of zeros for all rows in grid
     for gblock in grid: #For every block in the grid it will add 1 to the counter
@@ -168,9 +174,10 @@ def updateGrid(grid, shape,score):
         score += 375
     elif numRows == 4:
         score += 550
-    
+    if isgameover:
+        grid.append(isgameover)
     #print 'Score:', score
-    return grid,score
+    return grid,[score,numRows]
 
 #Complete
 def moveLeft(X_):
@@ -211,11 +218,14 @@ def canMove(shape, grid, direction, X_, Y_):
 
 class TetrisGameState:
     def __init__(self):
+        pygame.display.set_icon(pygame.image.load("Images\\img.JPG"))
         self.screen = pygame.display.set_mode((576,768))
         self.width = 576; self.height = 768
         self.fullscreen = False
         self.clock = pygame.time.Clock()
         pygame.display.set_caption("TETRIS!")
+        
+    
 
     def toggleFullscreen(self):
         modes = pygame.display.list_modes()
@@ -229,8 +239,7 @@ class TetrisGameState:
         self.height = self.screen.get_height()
 
 def main():
-    pygame.display.init()
-    pygame.display.set_icon(pygame.image.load("Images\\img.JPG"))
+    pygame.font.init()
     tgs = TetrisGameState()
     tgs.fullscreen = True
     tgs.toggleFullscreen()
@@ -240,19 +249,27 @@ def main():
     music = pygame.mixer.music
     music.load('Tetris.mp3')
     music.play(-1)
+    ###
+    music.stop()
+    ###
     
     #Load images to be used in game
     images = loadImages()
     
 #    gameState = MAIN_MENU
-    gameState = GAME
+    gameState = MAIN_MENU
     # In Game variables
     currentShapes = [list(shapes[randrange(0,len(shapes))]),list(shapes[randrange(0,len(shapes))])] #[current shape, next shape]
     game_grid = []
     nextFall = time.time()
     keyDelay = time.time() # used to limit the speed of keys pressed.
-    fasterTime = 0
     score = 0
+    numRows = 0
+    gameover = False
+    isPaused = False
+    fromGame = False
+    font = pygame.font.SysFont('geniso', 16, True, False)
+    font2 = pygame.font.SysFont('geniso', 16, True, False)
     
     while running:
         tgs.screen.fill((100,0,0))
@@ -266,26 +283,36 @@ def main():
                     return
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     mousePos = pygame.mouse.get_pos()
-                    if mousePos[0] > 0 and mousePos[0] <= 32 and mousePos[1] > 0 and mousePos[1] <= 32: 
+                    if mousePos[0] > 0 and mousePos[0] <= 32 and mousePos[1] > 0 and mousePos[1] <= 32:
                         print "HEY YOU! YEAH YOU!"
                         print 'Main Menu Screen'
                     #If click lies on 'Play', gameState == GAME
-                    elif mousePos[0] > 32 and mousePos[0] <= 64 and mousePos[1] > 0 and mousePos[1] <= 32: 
+                    elif mousePos[0] > 32 and mousePos[0] <= 32+32*8 and mousePos[1] > 32*11 and mousePos[1] <= 20*32: 
                         gameState = GAME
-                        print 'gameButton pressed'
+                        currentShapes = [list(shapes[randrange(0,len(shapes))]),list(shapes[randrange(0,len(shapes))])]
+                        game_grid = []
+                        fasterTime = 0
+                        score = 0
+                        numRows = 0
+                        X_[0] = 5
+                        Y_[0] = -2
+                        gameover = False
+                        print 'Play pressed'
                         
                     #If click lies on 'Controls', gameState == CONTROLS
-                    elif mousePos[0] > 10 and mousePos[0] <= 20 and mousePos[1] > 20 and mousePos[1] <= 30: 
+                    elif mousePos[0] > 320 and mousePos[0] <= 17*32 and mousePos[1] > 32*11 and mousePos[1] <= 32*15: 
                         gameState = CONTROLS
 
                     #If click lies on 'High Scores', gameState == HIGH_SCORES
-                    elif mousePos[0] > 10 and mousePos[0] <= 20 and mousePos[1] > 10 and mousePos[1] <= 20: 
+                    elif mousePos[0] > 320 and mousePos[0] <= 17*32 and mousePos[1] > 32*16 and mousePos[1] <= 32*20: 
                         gameState == HIGH_SCORES
                         
             tgs.screen.blit(images[MAIN_MENU],(0,0))
 
         #----------------IN GAME-----------------#
-        elif (gameState == GAME):
+                
+        
+        if (gameState == GAME):
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -293,57 +320,94 @@ def main():
                     return
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     mousePos = pygame.mouse.get_pos()
-                    if mousePos[0] > 10 and mousePos[0] <= 20 and mousePos[1] > 10 and mousePos[1] <= 20 and gamePused: 
+                    print mousePos
+#Resume button
+                    if mousePos[0] > 223 and mousePos[0] <= 349 and mousePos[1] > 341 and mousePos[1] <= 379 and isPaused: 
+                        isPaused = False
+# Controls button
+                    elif mousePos[0] > 231 and mousePos[0] <= 335 and mousePos[1] > 393 and mousePos[1] <= 429 and isPaused: 
                         gameState = CONTROLS
                         fromGame = True
-                    if mousePos[0] > 10 and mousePos[0] <= 20 and mousePos[1] > 10 and mousePos[1] <= 20 and gamePused: 
-                        gameState = MAIN__MENU
-                        fromGame = False
+# High Scores button
+                    elif mousePos[0] > 223 and mousePos[0] <= 341 and mousePos[1] > 445 and mousePos[1] <= 477 and isPaused: 
+                        gameState = MAIN_MENU
+                        isPaused = False
 
             # Get keys pressed
             keys = pygame.key.get_pressed()
             #limit movement left, right and rotation to KEY_DELAY (seconds)
             if(keyDelay - time.time() < 0):
-                if keys[K_UP] == True:
-                    canRotateL = canRotate(currentShapes[0], game_grid)
-                    if canRotateL:
-                        rotate(currentShapes[0])
+# P - Pause
+                if keys[K_p] == True and not gameover:
+                    isPaused = not isPaused
+                    keyDelay = time.time() + KEY_DELAY
+                if not isPaused and not gameover:
+                    if keys[K_UP] == True:
+                        canRotateL = canRotate(currentShapes[0], game_grid)
+                        if canRotateL:
+                            rotate(currentShapes[0])
+                            keyDelay = time.time() + KEY_DELAY
+# LEFT
+                    elif keys[K_LEFT] == True and canMove(currentShapes[0], game_grid, LEFT, X_, Y_):
+                        moveLeft(X_)
                         keyDelay = time.time() + KEY_DELAY
-                elif keys[K_LEFT] == True and canMove(currentShapes[0], game_grid, LEFT, X_, Y_):
-                    moveLeft(X_)
-                    keyDelay = time.time() + KEY_DELAY
-                elif keys[K_RIGHT] == True and canMove(currentShapes[0], game_grid, RIGHT, X_, Y_) :
-                    moveRight(X_)
-                    keyDelay = time.time() + KEY_DELAY
-                elif keys[K_DOWN] == True:
+# RIGHT
+                    elif keys[K_RIGHT] == True and canMove(currentShapes[0], game_grid, RIGHT, X_, Y_) :
+                        moveRight(X_)
+                        keyDelay = time.time() + KEY_DELAY
+# DOWN
+                    elif keys[K_DOWN] == True:
 #                    print 'DROPPING'
-                    drop(currentShapes[0],game_grid,X_,Y_)
+                        drop(currentShapes[0],game_grid,X_,Y_)
 #                    print 'DROPPED'
-                    game_grid,score = updateGrid(game_grid, currentShapes[0],score)
-                    currentShapes = nextShape(currentShapes)
-                    keyDelay = time.time() + KEY_DELAY
-                elif keys[K_SPACE] == True:
-                    if canMove(currentShapes[0], game_grid, DOWN, X_, Y_): moveDown(Y_)
-                    keyDelay = time.time() + KEY_DELAY
-
-            # Update gravity
-
-            if (nextFall - time.time() < 0):
-                nextFall = time.time() + DROP_DELAY + fasterTime;
-                if canMove(currentShapes[0],game_grid,DOWN,X_,Y_): moveDown(Y_)
-                else:
-                        grid,score = updateGrid(game_grid, currentShapes[0],score)
+                        game_grid,r = updateGrid(game_grid, currentShapes[0],score)
+                        score = r[0]
+                        numRows += r[1]
+                        if type(game_grid[len(game_grid)-1]) == bool:
+                            gameover = True
                         currentShapes = nextShape(currentShapes)
-        
-            #print 'Playing'
-            tgs.screen.blit(images[GAME],(0,0))
-            # Draw shapes.
-            drawShape(tgs.screen, images, currentShapes[0])
-            drawNextShape(tgs.screen, images, currentShapes[1])
-            # Draw grid.
-            drawGrid(tgs.screen, images, game_grid)
-        
-            tgs.screen.blit(images[GAME],(0,0),(0,0,576,32))
+                        keyDelay = time.time() + KEY_DELAY
+                        nextFall = time.time() + DROP_DELAY + fasterTime;
+                        
+# SPACE
+                    elif keys[K_SPACE] == True:
+                        if canMove(currentShapes[0], game_grid, DOWN, X_, Y_): moveDown(Y_)
+                        keyDelay = time.time() + KEY_DELAY
+
+            if not isPaused and not gameover:
+# Update gravity
+                if (nextFall - time.time() < 0):
+                    nextFall = time.time() + DROP_DELAY**((numRows+2)/2.0) + 0.08;
+                    print DROP_DELAY**((numRows+2)/2.0) + 0.08
+                    if canMove(currentShapes[0],game_grid,DOWN,X_,Y_): moveDown(Y_)
+                    else:
+                            game_grid,r = updateGrid(game_grid, currentShapes[0],score)
+                            score = r[0]
+                            numRows += r[1]
+                            if type(game_grid[len(game_grid)-1]) == bool:
+                                gameover = True
+                            currentShapes = nextShape(currentShapes)
+            
+                #print 'Playing'
+                tgs.screen.blit(images[GAME],(0,0))
+                # Draw shapes.
+                drawShape(tgs.screen, images, currentShapes[0])
+                drawNextShape(tgs.screen, images, currentShapes[1])
+                tgs.screen.blit(images[GAME],(0,0),(0,0,576,32))
+                tgs.screen.blit(font.render("SCORE:",1,(255,255,255),(0,0,0)),(395,276-32))
+                tgs.screen.blit(font.render(str(score),1,(255,255,255),(0,0,0)),(395+60,276-32))
+
+                tgs.screen.blit(font.render("ROWS:",1,(255,255,255),(0,0,0)),(395,325-32))
+                tgs.screen.blit(font.render(str(numRows),1,(255,255,255),(0,0,0)),(395+60,325-32))
+
+            
+            if not isPaused and not gameover:
+                # Draw grid.
+                drawGrid(tgs.screen, images, game_grid)
+            elif isPaused:
+                tgs.screen.blit(images[GAME_PAUSED],(0,0))
+            else:
+                tgs.screen.blit(images[GAME_OVER],(0,0))
             
         #------------------IN CONTROLS--------------#
         elif (gameState == CONTROLS):
@@ -352,8 +416,30 @@ def main():
                     running = False
                     pygame.quit()
                     return
-            print 'Controls Screen'
-
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    mousePos = pygame.mouse.get_pos()
+                    print mousePos
+                    if mousePos[0] > 77 and mousePos[0] <= 161 and mousePos[1] > 650 and mousePos[1] <= 686:
+                        gameState = GAME
+                        if not fromGame:
+                            currentShapes = [list(shapes[randrange(0,len(shapes))]),list(shapes[randrange(0,len(shapes))])]
+                            game_grid = []
+                            fasterTime = 0
+                            score = 0
+                            numRows = 0
+                            X_[0] = 5
+                            Y_[0] = -2
+                        else:
+                            fromGame = False
+                            
+                    elif mousePos[0] > 357 and mousePos[0] <= 505 and mousePos[1] > 650 and mousePos[1] <= 686: 
+                        gameState = MAIN_MENU
+                        if isPaused:
+                            isPaused = False
+                        fromGame = False
+            #print 'Controls Screen'
+            tgs.screen.blit(images[CONTROLS],(0,0))
+            
         #----------------IN HIGH SCORES-------------#
         elif (gameState == HIGH_SCORES) :
             for event in pygame.event.get():
@@ -361,6 +447,9 @@ def main():
                     running = False
                     pygame.quit()
                     return
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    mousePos = pygame.mouse.get_pos()
+                    print mousePos
             print 'High Scores Screen'
 
         
