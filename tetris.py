@@ -11,7 +11,7 @@ import time
 from pygame.locals import *
 from random import randrange
 
-images = ['Images\\red.JPG','Images\\orange.JPG','Images\\yellow.JPG','Images\\green.JPG','Images\\light_blue.JPG','Images\\blue.JPG','Images\\purple.JPG','Images\\MainMenu.JPG','Images\\Game.JPG','Images\\GamePaused.JPG','Images\\GameOver.JPG','Images\\Controls.JPG','Images\\HighScores.JPG','Images\\NewHighScore.JPG']
+images = ['Images\\red.JPG','Images\\orange.JPG','Images\\yellow.JPG','Images\\green.JPG','Images\\light_blue.JPG','Images\\blue.JPG','Images\\purple.JPG','Images\\MainMenu.JPG','Images\\Game.JPG','Images\\GamePaused.JPG','Images\\GameOver.JPG','Images\\Controls.JPG','Images\\HighScores.JPG','Images\\NewHighScore.JPG','Images\\clear.JPG']
 
 #Block type
 RED = 0
@@ -21,6 +21,7 @@ GREEN = 3
 LIGHT_BLUE = 4
 BLUE = 5
 PURPLE = 6
+CLEAR = 14
 #Game States
 MAIN_MENU = 7
 GAME = 8
@@ -64,12 +65,26 @@ def loadImages():
         temp.append(pygame.image.load(name))
     return temp
 
+def drawShadow(screen, grid, shape, images):
+    y = Y_[0]
+    try:
+        while (canMove(shape, grid, DOWN, X_, [y])):
+            y+= 1
+        for block in shape:
+#            print (block[0] + X_[0] + offsetX)*32, (block[1] + y + offsetY)*32
+            screen.blit(images[CLEAR],    ((block[0] + X_[0] + offsetX)*32, (block[1] + y + offsetY)*32))
+#            pygame.draw.rect(screen, (255,255,255),pygame.Rect((block[0] + X_[0] + offsetX)*32, (block[1] + y + offsetY)*32,32,32))
+    except:
+        x='' # This try-except catches a bug where there is an empty grid block,
+             # indicating gameover. crashes due to the canMove() function. This
+             # is the only case where error occurs because used after gameover is
+             # checked.
 #Complete
 def drawShape(screen, images, shape):
         for block in shape:
             screen.blit(images[block[2]], ((block[0] + X_[0] + offsetX)*32,(block[1] + Y_[0] + offsetY)*32))
-
-#WHY IS THIS ROTATING!?!?!?!
+            
+#Complete
 def drawNextShape(screen, images, shape): #Look this part over...
         shapes = [[[-1,0,0],[0,0,0],[0,-1,0],[1,0,0]],  #T      #RED
           [[0,0,1],[-1,0,1],[0,-1,1],[1,-1,1]], #S      #ORANGE
@@ -230,9 +245,9 @@ def readHighScores():
             scores.append(['name1',0])
         return scores
     except:
-        print 'corrupt file or file does not exist'
+        print 'corrupt High_Scores.txt file or file does not exist'
         return [['name1',0],['name2',0],['name3',0],['name4',0],['name5',0],['name6',0],['name7',0],['name8',0],['name9',0],['name10',0]]
-    #If any errors appear, it will resrt to a default nameset.
+    #If any errors appear, it will reset to a default nameset.
     
 def writeHighScores(highScores):
     writeFile = open('High_Scores.txt','w')
@@ -243,7 +258,7 @@ def writeHighScores(highScores):
             writeFile.write('\n')
         i+=1
     writeFile.close()
-    #print 'writing file'
+    # 'writing file'
 
 def isNewHighScore(highScores, score):
     for entry in highScores:
@@ -259,7 +274,7 @@ def addHighScore(highScores, name, score):
         if entry[1] <= score:
             break
         index += 1
-    print 'index:',index
+    #print 'index:',index
     for i in range(index):
         temp.append(highScores[i])
     temp.append([name,score])
@@ -309,7 +324,7 @@ def main():
     images = loadImages()
     
 #    gameState = MAIN_MENU
-    gameState = NEW_HIGH_SCORE
+    gameState = MAIN_MENU
     # In Game variables
     currentShapes = [list(shapes[randrange(0,len(shapes))]),list(shapes[randrange(0,len(shapes))])] #[current shape, next shape]
     game_grid = []
@@ -371,7 +386,7 @@ def main():
                     return
                 if event.type == pygame.MOUSEBUTTONDOWN and not gameover:
                     mousePos = pygame.mouse.get_pos()
-                    print mousePos
+                    #print mousePos
 # Resume button
                     if mousePos[0] > 223 and mousePos[0] <= 349 and mousePos[1] > 341 and mousePos[1] <= 379 and isPaused: 
                         isPaused = False
@@ -393,6 +408,7 @@ def main():
                     isPaused = not isPaused
                     keyDelay = time.time() + KEY_DELAY
                 if not isPaused:
+# UP
                     if keys[K_UP] == True:
                         canRotateL = canRotate(currentShapes[0], game_grid)
                         if canRotateL:
@@ -408,6 +424,10 @@ def main():
                         keyDelay = time.time() + KEY_DELAY
 # DOWN
                     elif keys[K_DOWN] == True:
+                        if canMove(currentShapes[0], game_grid, DOWN, X_, Y_): moveDown(Y_)
+                        keyDelay = time.time() + KEY_DELAY
+# SPACE
+                    elif keys[K_SPACE] == True:
                         drop(currentShapes[0],game_grid,X_,Y_)
                         game_grid,r = updateGrid(game_grid, currentShapes[0],score)
                         score = r[0]
@@ -422,8 +442,8 @@ def main():
             if not isPaused and not gameover:
 # Apply 'gravity'
                 if (nextFall - time.time() < 0):
-                    nextFall = time.time() + DROP_DELAY**((numRows+2)/2.0) + 0.08;
-                    #print DROP_DELAY**((numRows+2)/2.0) + 0.08
+                    nextFall = time.time() + DROP_DELAY**((numRows+4)/4.0) + 0.08;
+                    #print DROP_DELAY**((numRows+4)/4.0) + 0.08
                     if canMove(currentShapes[0],game_grid,DOWN,X_,Y_): moveDown(Y_)
                     else:
                             game_grid,r = updateGrid(game_grid, currentShapes[0],score)
@@ -438,6 +458,7 @@ def main():
                 tgs.screen.blit(images[GAME],(0,0))
 
 # Draw shapes.
+                drawShadow(tgs.screen, game_grid,currentShapes[0],images)
                 drawShape(tgs.screen, images, currentShapes[0])
                 drawNextShape(tgs.screen, images, currentShapes[1])
                 
@@ -576,3 +597,6 @@ def main():
         pygame.display.flip() # still don't know what this does..
         tgs.clock.tick(1000)
 main()
+
+# Shadow
+# Rotate left
