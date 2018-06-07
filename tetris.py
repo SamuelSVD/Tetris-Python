@@ -1,7 +1,9 @@
 # Written by Samuel Vergara
-# This is supposed to be a tetris remake (duuh..).
+# This is supposed to be a tetris remake
 # Tetris song from: http://www.youtube.com/watch?v=NmCCQxVBfyM
 
+# Thanks to everyone who played!
+# Thanks to those who helped me get the high scores!
 
 import math
 import pygame
