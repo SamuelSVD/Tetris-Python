@@ -35,10 +35,13 @@ GAME_OVER = 10
 # IN GAME VARIABLES
 DROP_DELAY = 0.6
 KEY_DELAY = 0.1
-DOWN = 0
-LEFT = 1
-RIGHT = 2
 
+UP = 0
+DOWN = 1
+LEFT = 2
+RIGHT = 3
+SPACE = 4
+P = 5
 # Control location of the gameBlock
 X_ = [5]
 Y_ = [0]
@@ -118,8 +121,10 @@ def drawGrid(screen, images, grid):
 
 #Complete
 def rotate(shape):
-	for block in shape: block[0],block[1] = block[1],-block[0]
-
+    #CCW
+	#for block in shape: block[0],block[1] = block[1],-block[0]
+    #CW
+	for block in shape: block[0],block[1] = -block[1],block[0]
 #Complete
 def canRotate(shape, grid):
         canRotate_ = True
@@ -317,7 +322,7 @@ def main():
     music.load('Tetris.mp3')
     music.play(-1)
     ###
-    music.stop()
+#    music.stop()
     ###
     
     #Load images to be used in game
@@ -340,6 +345,7 @@ def main():
     font2 = pygame.font.SysFont('geniso', 24, True, False)
     highScores = readHighScores()
     name = ''
+    keysPressed = [False, False, False, False, False, False]
     while running:
         tgs.screen.fill((100,0,0))
 
@@ -403,31 +409,38 @@ def main():
             keys = pygame.key.get_pressed()
             #limit movement left, right and rotation to KEY_DELAY (seconds)
             if(keyDelay - time.time() < 0) and not gameover:
+            #if not gameover:
 # P - Pause
-                if keys[K_p] == True:
+                if keys[K_p] == True and not keysPressed[P]:
                     isPaused = not isPaused
-                    keyDelay = time.time() + KEY_DELAY
+                    #keyDelay = time.time() + KEY_DELAY
+                    keysPressed[P] = True
                 if not isPaused:
 # UP
-                    if keys[K_UP] == True:
+                    if keys[K_UP] == True and not keysPressed[UP]:
                         canRotateL = canRotate(currentShapes[0], game_grid)
                         if canRotateL:
                             rotate(currentShapes[0])
                             keyDelay = time.time() + KEY_DELAY
-# LEFT
-                    elif keys[K_LEFT] == True and canMove(currentShapes[0], game_grid, LEFT, X_, Y_):
-                        moveLeft(X_)
-                        keyDelay = time.time() + KEY_DELAY
-# RIGHT
-                    elif keys[K_RIGHT] == True and canMove(currentShapes[0], game_grid, RIGHT, X_, Y_) :
-                        moveRight(X_)
-                        keyDelay = time.time() + KEY_DELAY
+                        keysPressed[UP] = True
 # DOWN
-                    elif keys[K_DOWN] == True:
+                    elif keys[K_DOWN] == True and not keysPressed[DOWN]:
                         if canMove(currentShapes[0], game_grid, DOWN, X_, Y_): moveDown(Y_)
                         keyDelay = time.time() + KEY_DELAY
+                        #keysPressed[DOWN] = True
+# LEFT
+                    elif keys[K_LEFT] == True and canMove(currentShapes[0], game_grid, LEFT, X_, Y_)and not keysPressed[LEFT]:
+                        moveLeft(X_)
+                        keyDelay = time.time() + KEY_DELAY
+                        #keysPressed[LEFT] = True
+# RIGHT
+                    elif keys[K_RIGHT] == True and canMove(currentShapes[0], game_grid, RIGHT, X_, Y_) and not keysPressed[RIGHT]:
+                        moveRight(X_)
+                        keyDelay = time.time() + KEY_DELAY
+                        #keysPressed[RIGHT] = True
+
 # SPACE
-                    elif keys[K_SPACE] == True:
+                    elif keys[K_SPACE] == True and not keysPressed[SPACE]:
                         drop(currentShapes[0],game_grid,X_,Y_)
                         game_grid,r = updateGrid(game_grid, currentShapes[0],score)
                         score = r[0]
@@ -436,9 +449,23 @@ def main():
                             gameover = True
                             toNextScreen = time.time() + 3
                         currentShapes = nextShape(currentShapes)
-                        keyDelay = time.time() + KEY_DELAY
+                        #keyDelay = time.time() + KEY_DELAY
                         nextFall = time.time() + DROP_DELAY;
+                        keysPressed[SPACE] = True
+                    if keys[K_UP] == False:
+                        keysPressed[UP] = False
+                    if keys[K_DOWN] == False:
+                        keysPressed[DOWN] = False
+                    if keys[K_LEFT] == False:
+                        keysPressed[LEFT] = False
+                    if keys[K_RIGHT] == False:
+                        keysPressed[RIGHT] = False
+                    if keys[K_SPACE] == False:
+                        keysPressed[SPACE] = False
+                if keys[K_p] == False:
+                    keysPressed[P] = False
                         
+
             if not isPaused and not gameover:
 # Apply 'gravity'
                 if (nextFall - time.time() < 0):
